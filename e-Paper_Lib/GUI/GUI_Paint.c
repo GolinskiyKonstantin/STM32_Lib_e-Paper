@@ -609,7 +609,7 @@ void Paint_DrawBitMap_Size( int16_t x, int16_t y, const unsigned char* bitmap, i
 //-----------------------------------------------------------------------------------------------------------------------------
 
 //-----------------------------------------------------------------------------------------------------------------------------
-char Paint_DrawChar(uint16_t x, uint16_t y, UWORD TextColor, UWORD BgColor, uint8_t TransparentBg, FontDef_t* Font, uint8_t multiplier, unsigned char ch){
+void Paint_DrawChar(uint16_t x, uint16_t y, UWORD TextColor, UWORD BgColor, uint8_t TransparentBg, FontDef_t* Font, uint8_t multiplier, unsigned char ch){
 	
 	uint32_t i, b, j;
 	
@@ -622,85 +622,114 @@ char Paint_DrawChar(uint16_t x, uint16_t y, UWORD TextColor, UWORD BgColor, uint
 	}
 
 	/* Check available space in LCD */
-	if (
-		Paint.Width <= ( x + Font->FontWidth) || Paint.Height <= ( y + Font->FontHeight)){
-		/* Error */
-		return 0;
-	}
+	if (Paint.Width >= ( x + Font->FontWidth) || Paint.Height >= ( y + Font->FontHeight)){
 	
-	/* Go through font */
-	for (i = 0; i < Font->FontHeight; i++) {		
-		
-		if( ch < 127 ){			
-			b = Font->data[(ch - 32) * Font->FontHeight + i];
-		}
-		
-		else if( (uint8_t) ch > 191 ){
-			// +96 это так как латинские символы и знаки в шрифтах занимают 96 позиций
-			// и если в шрифте который содержит сперва латиницу и спец символы и потом 
-			// только кирилицу то нужно добавлять 95 если шрифт 
-			// содержит только кирилицу то +96 не нужно
-			b = Font->data[((ch - 192) + 96) * Font->FontHeight + i];
-		}
-		
-		else if( (uint8_t) ch == 168 ){	// 168 символ по ASCII - Ё
-			// 160 эллемент ( символ Ё ) 
-			b = Font->data[( 160 ) * Font->FontHeight + i];
-		}
-		
-		else if( (uint8_t) ch == 184 ){	// 184 символ по ASCII - ё
-			// 161 эллемент  ( символ ё ) 
-			b = Font->data[( 161 ) * Font->FontHeight + i];
-		}
-		//-------------------------------------------------------------------
-		
-		for (j = 0; j < Font->FontWidth; j++) {
-			
-			if ((b << j) & 0x8000) {
+			/* Go through font */
+			for (i = 0; i < Font->FontHeight; i++) {		
 				
-				for (yy = 0; yy < multiplier; yy++){
-					for (xx = 0; xx < multiplier; xx++){
-							Paint_SetPixel(X+xx, Y+yy, TextColor);
-					}
+				if( ch < 127 ){			
+					b = Font->data[(ch - 32) * Font->FontHeight + i];
 				}
 				
-			} 
-			else if( TransparentBg ){
-				
-				for (yy = 0; yy < multiplier; yy++){
-					for (xx = 0; xx < multiplier; xx++){
-							Paint_SetPixel(X+xx, Y+yy, BgColor);
-					}
+				else if( (uint8_t) ch > 191 ){
+					// +96 это так как латинские символы и знаки в шрифтах занимают 96 позиций
+					// и если в шрифте который содержит сперва латиницу и спец символы и потом 
+					// только кирилицу то нужно добавлять 95 если шрифт 
+					// содержит только кирилицу то +96 не нужно
+					b = Font->data[((ch - 192) + 96) * Font->FontHeight + i];
 				}
 				
+				else if( (uint8_t) ch == 168 ){	// 168 символ по ASCII - Ё
+					// 160 эллемент ( символ Ё ) 
+					b = Font->data[( 160 ) * Font->FontHeight + i];
+				}
+				
+				else if( (uint8_t) ch == 184 ){	// 184 символ по ASCII - ё
+					// 161 эллемент  ( символ ё ) 
+					b = Font->data[( 161 ) * Font->FontHeight + i];
+				}
+				//-------------------------------------------------------------------
+				
+				for (j = 0; j < Font->FontWidth; j++) {
+					
+					if ((b << j) & 0x8000) {
+						
+						for (yy = 0; yy < multiplier; yy++){
+							for (xx = 0; xx < multiplier; xx++){
+									Paint_SetPixel(X+xx, Y+yy, TextColor);
+							}
+						}
+						
+					} 
+					else if( TransparentBg ){
+						
+						for (yy = 0; yy < multiplier; yy++){
+							for (xx = 0; xx < multiplier; xx++){
+									Paint_SetPixel(X+xx, Y+yy, BgColor);
+							}
+						}
+						
+					}
+					X = X + multiplier;
+				}
+				X = x;
+				Y = Y + multiplier;
 			}
-			X = X + multiplier;
-		}
-		X = x;
-		Y = Y + multiplier;
-	}
 	
-	return ch;
+	}
 }
 //----------------------------------------------------------------------------------
 
-char Paint_DrawString(uint16_t x, uint16_t y, UWORD TextColor, UWORD BgColor, uint8_t TransparentBg, FontDef_t* Font, uint8_t multiplier, char *str){	
+void Paint_DrawString(uint16_t x, uint16_t y, UWORD TextColor, UWORD BgColor, uint8_t TransparentBg, FontDef_t* Font, uint8_t multiplier, char *str){	
 	
 	if( multiplier < 1 ){
 		multiplier = 1;
 	}
 	
-	while (*str) {
-		/* Write character by character */
-		if ( Paint_DrawChar(x, y, TextColor, BgColor, TransparentBg, Font, multiplier, *str) != *str ){
-			/* Return error */
-			return *str;
-		}
+	unsigned char buff_char;
+	
+	uint16_t len = strlen(str);
+	
+	while (len--) {
 		
+		//---------------------------------------------------------------------
+		// проверка на кириллицу UTF-8, если латиница то пропускаем if
+		// Расширенные символы ASCII Win-1251 кириллица (код символа 128-255)
+		// проверяем первый байт из двух ( так как UTF-8 ето два байта )
+		// если он больше либо равен 0xC0 ( первый байт в кириллеце будет равен 0xD0 либо 0xD1 именно в алфавите )
+		if ( (uint8_t)*str >= 0xC0 ){	// код 0xC0 соответствует символу кириллица 'A' по ASCII Win-1251
+			
+			// проверяем какой именно байт первый 0xD0 либо 0xD1
+			switch ((uint8_t)*str) {
+				case 0xD0: {
+					// увеличиваем массив так как нам нужен второй байт
+					str++;
+					// проверяем второй байт там сам символ
+					if ((uint8_t)*str == 0x81) { buff_char = 0xA8; break; }		// байт символа Ё ( если нужнф еще символы добавляем тут и в функции DrawChar() )
+					if ((uint8_t)*str >= 0x90 && (uint8_t)*str <= 0xBF){ buff_char = (*str) + 0x30; }	// байт символов А...Я а...п  делаем здвиг на +48
+					break;
+				}
+				case 0xD1: {
+					// увеличиваем массив так как нам нужен второй байт
+					str++;
+					// проверяем второй байт там сам символ
+					if ((uint8_t)*str == 0x91) { buff_char = 0xB8; break; }		// байт символа ё ( если нужнф еще символы добавляем тут и в функции DrawChar() )
+					if ((uint8_t)*str >= 0x80 && (uint8_t)*str <= 0x8F){ buff_char = (*str) + 0x70; }	// байт символов п...я	елаем здвиг на +112
+					break;
+				}
+			}
+			// уменьшаем еще переменную так как израсходывали 2 байта для кириллицы
+			len--;
+			
+			Paint_DrawChar(x, y, TextColor, BgColor, TransparentBg, Font, multiplier, buff_char);
+		}
+		//---------------------------------------------------------------------
+		else{			
+			Paint_DrawChar(x, y, TextColor, BgColor, TransparentBg, Font, multiplier, *str);
+		}
+	
 		x = x + (Font->FontWidth * multiplier);
 		/* Increase string pointer */
 		str++;
 	}
-	/* Everything OK, zero should be returned */
-	return *str;
 }

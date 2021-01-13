@@ -207,15 +207,12 @@ void Paint_DrawBitMap_Size( int16_t x, int16_t y, const unsigned char* bitmap, i
 
 //-----------------------------------------------------------------------------------------------------------------------------
 // печатаем символ ( один ) параметры: х,  у,  цвет символа, цвет фона, вкл/выкл фон, размер шрифта, множитель шрифта (увеличивает в х раз шрифт ), сам символ
-char Paint_DrawChar(uint16_t x, uint16_t y, UWORD TextColor, UWORD BgColor, uint8_t TransparentBg, FontDef_t* Font, uint8_t multiplier, unsigned char ch);
+void Paint_DrawChar(uint16_t x, uint16_t y, UWORD TextColor, UWORD BgColor, uint8_t TransparentBg, FontDef_t* Font, uint8_t multiplier, unsigned char ch);
 //-----------------------------------------------------------------------------------------------------------------------------
 
 //-----------------------------------------------------------------------------------------------------------------------------
 // печатаем строку параметры: х,  у,  цвет строки, цвет фона, вкл/выкл фон, размер шрифта, множитель шрифта (увеличивает в х раз шрифт ), сама строка
-// для кирилицы используем функцию utf8rus, если только латиница то можно без нее
-// незабываем каждый раз после вызова функции utf8rus() освобождать память
-// free( pText );	// освобождаем память выделенную в функции utf8rus() посредством malloc();
-char Paint_DrawString(uint16_t x, uint16_t y, UWORD TextColor, UWORD BgColor, uint8_t TransparentBg, FontDef_t* Font, uint8_t multiplier, char *str);
+void Paint_DrawString(uint16_t x, uint16_t y, UWORD TextColor, UWORD BgColor, uint8_t TransparentBg, FontDef_t* Font, uint8_t multiplier, char *str);
 //-----------------------------------------------------------------------------------------------------------------------------
 
 
